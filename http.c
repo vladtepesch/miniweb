@@ -22,7 +22,9 @@
 #ifdef _7Z
 #include "7zDec/7zInc.h"
 #endif
-
+#ifdef _ZIP
+#include "minz/miniz.h"
+#endif
 ////////////////////////////////////////////////////////////////////////////
 // global variables
 ////////////////////////////////////////////////////////////////////////////
@@ -1656,31 +1658,65 @@ int _mwStartSendFile2(HttpParam* hp, HttpSocket* phsSocket, const char* rootPath
 #ifndef WINCE
 		if (cc_stat(hfp.cFilePath,&st) < 0) {
 #ifdef _7Z
-			char* szfile = 0;
-			char *p = strstr(hfp.cFilePath, ".7z/");
-			if (p) {
-				p += 3;
-				*p = 0;
-				szfile = p + 1;
-			}
-			if (szfile) {
-				char* data;
-				int len = SzExtractContent(hp->szctx, hfp.cFilePath, szfile, &data);
-				if (len > 0) {
-					p = strrchr(szfile, '.');
-					SETFLAG(phsSocket,FLAG_DATA_RAW);
-					phsSocket->pucData = (char*)malloc(len);
-					memcpy(phsSocket->pucData, data, len);
-					phsSocket->ptr = phsSocket->pucData;
-					phsSocket->response.contentLength = len;
-					phsSocket->response.fileType = p ? mwGetContentType(p + 1) : HTTPFILETYPE_OCTET;
-					phsSocket->dataLength = len;
-					return _mwStartSendRawData(hp, phsSocket);
-				}
-			}
-			if (p) *p = SLASH;
+      {
+        char* szfile = 0;
+        char *p = strstr(hfp.cFilePath, ".7z/");
+        if (p) {
+          p += 3;
+          *p = 0;
+          szfile = p + 1;
+        }
+        if (szfile) {
+          char* data;
+          int len = SzExtractContent(hp->szctx, hfp.cFilePath, szfile, &data);
+          printf("7zRequest archive: %s\nhfp.cFilePath: %s\nfile: %s - len %i\n", hp->szctx, hfp.cFilePath, szfile, len);
+          if (len > 0) {
+            p = strrchr(szfile, '.');
+            SETFLAG(phsSocket, FLAG_DATA_RAW);
+            phsSocket->pucData = (char*)malloc(len);
+            memcpy(phsSocket->pucData, data, len);
+            phsSocket->ptr = phsSocket->pucData;
+            phsSocket->response.contentLength = len;
+            phsSocket->response.fileType = p ? mwGetContentType(p + 1) : HTTPFILETYPE_OCTET;
+            phsSocket->dataLength = len;
+            return _mwStartSendRawData(hp, phsSocket);
+          }
+        }
+        if (p) *p = SLASH;
+      }
 #endif
-			// file/dir not found
+#ifdef _ZIP
+      {
+        char* zfile = 0;
+        char *p = strstr(hfp.cFilePath, ".zip/");
+        if (p) {
+          p += 4;
+          *p = 0;
+          zfile = p + 1;
+        }
+        if (zfile) {
+          char* data;
+          int len = -1;
+          data = mz_zip_extract_archive_file_to_heap( hfp.cFilePath, zfile, &len, 0);
+
+          printf("zip Request archive: hfp.cFilePath: %s\nfile: %s - len %i\n", hfp.cFilePath, zfile, len);
+          if (len > 0) {
+            p = strrchr(zfile, '.');
+            SETFLAG(phsSocket, FLAG_DATA_RAW);
+            phsSocket->pucData = (char*)malloc(len);
+            memcpy(phsSocket->pucData, data, len);
+            phsSocket->ptr = phsSocket->pucData;
+            phsSocket->response.contentLength = len;
+            phsSocket->response.fileType = p ? mwGetContentType(p + 1) : HTTPFILETYPE_OCTET;
+            phsSocket->dataLength = len;
+            return _mwStartSendRawData(hp, phsSocket);
+          }
+        }
+        if (p) *p = SLASH;
+      }
+#endif
+      
+      // file/dir not found
 			return -1;
 		}
 		// open file

@@ -1,3 +1,8 @@
+# additional changes 
+ - added zip - support
+ - added dependencies for 7z-support (allthough it does not properly with large 7zfiles)
+ - made compilable with Visual Studio 2015
+
 # miniweb-avih
 Small, cross-platform HTTP server
 

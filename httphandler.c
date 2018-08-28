@@ -14,6 +14,9 @@
 #ifdef _7Z
 #include "7zDec/7zInc.h"
 #endif
+#ifdef _ZIP
+#include "minz/miniz.h"
+#endif
 #include "httpxml.h"
 
 int _mwBuildHttpHeader(HttpSocket *phsSocket, time_t contentDateTime, unsigned char* buffer);
@@ -123,6 +126,7 @@ int uh7Zip(UrlHandlerParam* param)
 	*p = 0;
 	path = (char*)malloc(strlen(req->pucPath) + strlen(hp->pchWebPath) + 5);
 	sprintf(path, "%s/%s.7z", hp->pchWebPath, req->pucPath);
+	printf("7zRequest pucpath: %s\n webPath: %s \npath: %s\n", req->pucPath, hp->pchWebPath, path);
 	*p = '/';
 
 	if (!IsFileExist(path)) {
@@ -142,6 +146,45 @@ int uh7Zip(UrlHandlerParam* param)
 }
 
 #endif
+
+#ifdef _ZIP
+
+int uhZip(UrlHandlerParam* param)
+{
+  HttpRequest *req = &param->hs->request;
+  HttpParam *hp = (HttpParam*)param->hp;
+  char *path;
+  char *filename;
+  void *content;
+  int len = -1;
+  char *p = strchr(req->pucPath, '/');
+  if (p) p = strchr(p + 1, '/');
+  if (!p) return 0;
+  filename = p + 1;
+  *p = 0;
+  path = (char*)malloc(strlen(req->pucPath) + strlen(hp->pchWebPath) + 5);
+  sprintf(path, "%s/%s.zip", hp->pchWebPath, req->pucPath);
+  printf("zip Request pucpath: %s\n webPath: %s \npath: %s\n", req->pucPath, hp->pchWebPath, path);
+  *p = '/';
+
+  if (!IsFileExist(path)) {
+    free(path);
+    return 0;
+  }
+
+  content = mz_zip_extract_archive_file_to_heap(path, filename, &len, 0);
+  free(path);
+  if (len < 0 || content == NULL) return 0;
+
+  p = strrchr(filename, '.');
+  param->fileType = p ? mwGetContentType(p + 1) : HTTPFILETYPE_OCTET;
+  param->dataBytes = len;
+  param->pucBuffer = content;
+  return FLAG_DATA_RAW;
+}
+
+#endif
+
 
 //////////////////////////////////////////////////////////////////////////
 // stream handler sample

@@ -34,6 +34,7 @@ int uhStream(UrlHandlerParam* param);
 int ehVod(MW_EVENT msg, int argi, void* argp);
 int uhTest(UrlHandlerParam* param);
 int uh7Zip(UrlHandlerParam* param);
+int uhZip(UrlHandlerParam* param);
 int uhFileStream(UrlHandlerParam* param);
 int uhAsyncDataTest(UrlHandlerParam* param);
 int uhRTSP(UrlHandlerParam* param);
@@ -53,6 +54,9 @@ UrlHandler urlHandlerList[]={
 #endif
 #ifdef _7Z
 	{"7z", uh7Zip, NULL},
+#endif
+#ifdef _ZIP
+  { "zip", uhZip, NULL },
 #endif
 #ifdef _MPD
 	{"mpd", uhMpd, ehMpd},
@@ -306,7 +310,7 @@ int cc_main(int argc,char* argv[])
 	//fill in default settings
 	mwInitParam(&httpParam);
 	httpParam.maxClients=32;
-	httpParam.httpPort = 80;
+	httpParam.httpPort = 8000;
 	GetFullPath(httpParam.pchWebPath, argv[0], "htdocs");
 #ifndef DISABLE_BASIC_WWWAUTH
 	httpParam.pxAuthHandler = authHandlerList;
@@ -332,7 +336,7 @@ int cc_main(int argc,char* argv[])
 				case 'h':
 					fprintf(stderr,"Usage: miniweb	-h	: display this help screen\n"
 						       "		-v	: log status/error info\n"
-						       "		-p	: specifiy http port [default 80]\n"
+						       "		-p	: specifiy http port [default 8000]\n"
 						       "		-i	: interface [default 0.0.0.0]\n"
 						       "		-r	: specify http document directory [default htdocs]\n"
 						       "		-l	: specify log file\n"
@@ -407,6 +411,8 @@ int cc_main(int argc,char* argv[])
 		printf("Max clients (per IP): %d (%d)\n",httpParam.maxClients, httpParam.maxClientsPerIP);
 		for (n=0;urlHandlerList[n].pchUrlPrefix;n++);
 		printf("URL handlers: %d\n",n);
+		for (n = 0; urlHandlerList[n].pchUrlPrefix; n++)
+			printf("  %s\n", urlHandlerList[n].pchUrlPrefix);
 		if (httpParam.flags & FLAG_DIR_LISTING) printf("Dir listing enabled\n");
 		if (httpParam.flags & FLAG_DISABLE_RANGE) printf("Byte-range disabled\n");
 
