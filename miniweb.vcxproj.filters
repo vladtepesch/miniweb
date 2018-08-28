@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="http.c" />
+    <ClCompile Include="httpauth.c" />
+    <ClCompile Include="httphandler.c" />
+    <ClCompile Include="httppil.c" />
+    <ClCompile Include="httppost.c" />
+    <ClCompile Include="httpxml.c" />
+    <ClCompile Include="miniweb.c" />
+    <ClCompile Include="processpil.c" />
+    <ClCompile Include="minz\miniz.c">
+      <Filter>minz</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="httpapi.h" />
+    <ClInclude Include="httpint.h" />
+    <ClInclude Include="httppil.h" />
+    <ClInclude Include="httpvod.h" />
+    <ClInclude Include="httpxml.h" />
+    <ClInclude Include="processpil.h" />
+    <ClInclude Include="revision.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="webroot\demo-dyn.htm" />
+    <None Include="webroot\formtest.htm" />
+    <None Include="webroot\index.htm" />
+    <None Include="Makefile" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="minz">
+      <UniqueIdentifier>{186742b7-e95b-480b-9194-4d6322c3175c}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
