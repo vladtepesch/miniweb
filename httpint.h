@@ -61,6 +61,7 @@
 #define FILEEXT_GIF DEFDWORD('G','I','F',0)
 #define FILEEXT_JPG DEFDWORD('J','P','G',0)
 #define FILEEXT_PNG DEFDWORD('P','N','G',0)
+#define FILEEXT_SVG DEFDWORD('S','V','G',0)
 #define FILEEXT_CSS DEFDWORD('C','S','S',0)
 #define FILEEXT_JS DEFDWORD('J','S',0,0)
 #define FILEEXT_SWF DEFDWORD('S','W','F',0)
