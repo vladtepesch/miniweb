@@ -303,7 +303,7 @@ typedef struct _httpParam {
 	SOCKET listenSocket;
 	int httpPort;
 	int socketRcvBufSize;	/* socket receive buffer size in KB */
-	char pchWebPath[128];
+	char pchWebPath[512];
 	UrlHandler *pxUrlHandler;		/* pointer to URL handler array */
 	AuthHandler *pxAuthHandler;     /* pointer to authorization handler array */
 #ifndef DISABLE_VIRTUAL_PATH
