@@ -16,6 +16,7 @@
 #include <sys/types.h>
 #include "httppil.h"
 
+#include "mime.h"
 #define VER_MAJOR 0
 #define VER_MINOR 8
 
@@ -52,36 +53,6 @@
 extern "C" {
 #endif
 
-// file types
-typedef enum {
-  HTTPFILETYPE_UNKNOWN = 0,
-  HTTPFILETYPE_HTML,
-  HTTPFILETYPE_XML,
-  HTTPFILETYPE_TEXT,
-  HTTPFILETYPE_XUL,
-  HTTPFILETYPE_CSS,
-  HTTPFILETYPE_JS,
-  HTTPFILETYPE_PNG,
-  HTTPFILETYPE_JPEG,
-  HTTPFILETYPE_GIF,
-  HTTPFILETYPE_SVG,
-  HTTPFILETYPE_SWF,
-  HTTPFILETYPE_MPA,
-  HTTPFILETYPE_MPEG,
-  HTTPFILETYPE_AVI,
-  HTTPFILETYPE_MP4,
-  HTTPFILETYPE_MOV,
-  HTTPFILETYPE_264,
-  HTTPFILETYPE_FLV,
-  HTTPFILETYPE_TS,
-  HTTPFILETYPE_3GP,
-  HTTPFILETYPE_ASF,
-  HTTPFILETYPE_OCTET,
-  HTTPFILETYPE_STREAM,
-  HTTPFILETYPE_M3U8,
-  HTTPFILETYPE_SDP,
-  HTTPFILETYPE_HEX,
-} HttpFileType;
 
 #define MAXPOSTPARAMS 50
 #define MAXPOSTREDIRECTFILENAME (200)
@@ -420,7 +391,6 @@ char* mwGetVarValue(HttpVariables* vars, const char *varname, const char *defval
 int mwGetVarValueInt(HttpVariables* vars, const char *varname, int defval);
 unsigned int mwGetVarValueHex(HttpVariables* vars, const char *varname, unsigned int defval);
 int mwParseQueryString(UrlHandlerParam* up);
-int mwGetContentType(const char *pchExtname);
 void mwDecodeString(char* s);
 
 #ifdef __cplusplus

@@ -105,7 +105,7 @@ int uhStats(UrlHandlerParam* param)
 
 	//return data to server
 	param->dataBytes=(int)(p - param->pucBuffer);
-	param->fileType=HTTPFILETYPE_XML;
+	param->fileType=MIMETYPE_XML;
 	return ret;
 }
 
@@ -139,7 +139,7 @@ int uh7Zip(UrlHandlerParam* param)
 	if (len < 0) return 0;
 
 	p = strrchr(filename, '.');
-	param->fileType = p ? mwGetContentType(p + 1) : HTTPFILETYPE_OCTET;
+  param->fileType = Mime_getTypeFromExt(p);
 	param->dataBytes = len;
 	param->pucBuffer = content;
 	return FLAG_DATA_RAW;
@@ -177,7 +177,7 @@ int uhZip(UrlHandlerParam* param)
   if (len < 0 || content == NULL) return 0;
 
   p = strrchr(filename, '.');
-  param->fileType = p ? mwGetContentType(p + 1) : HTTPFILETYPE_OCTET;
+  param->fileType = Mime_getTypeFromExt(p);
   param->dataBytes = len;
   param->pucBuffer = content;
   return FLAG_DATA_RAW;

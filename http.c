@@ -19,6 +19,8 @@
 #include "httpint.h"
 #include "win32/win_compat.h"
 
+#include "mime.h"
+
 #ifdef _7Z
 #include "7zDec/7zInc.h"
 #endif
@@ -73,36 +75,6 @@ const char* status500[] = {
 	"Bad Gateway", /* 502 */
 	"Service Unavailable", /* 503 */
 	"Gateway Timeout", /* 504 */
-};
-
-const char* contentTypeTable[]={
-	"application/octet-stream",
-	"text/html",
-	"text/xml",
-	"text/plain",
-	"application/vnd.mozilla.xul+xml",
-	"text/css",
-	"application/x-javascript",
-	"image/png",
-	"image/jpeg",
-	"image/gif",
-	"image/svg+xml",
-	"application/x-shockwave-flash",
-	"audio/mpeg",
-	"video/mpeg",
-	"video/avi",
-	"video/mp4",
-	"video/quicktime",
-	"video/x-mpeg-avc",
-	"video/flv",
-	"video/MP2T",
-	"video/3gpp",
-	"video/x-ms-asf",
-	"application/octet-stream",
-	"application/x-datastream",
-	"application/x-mpegURL",
-	"application/sdp",
-	"application/binhex",
 };
 
 char* defaultPages[]={"index.htm","index.html","default.htm","main.xul"};
@@ -259,7 +231,7 @@ int mwServerStart(HttpParam* hp)
 ////////////////////////////////////////////////////////////////////////////
 int mwServerShutdown(HttpParam* hp, mwShutdownCallback cb, unsigned int timeout_ms)
 {
-	int i;
+	unsigned int i;
 	if (hp->bKillingWebserver || hp->bKillWebserver || !hp->bWebserverRunning)
 		return -1;  // call at invalid state
 	hp->bKillingWebserver = TRUE;
@@ -773,7 +745,7 @@ int _mwBuildHttpHeader(HttpParam* hp, HttpSocket *phsSocket, time_t contentDateT
 	if (phsSocket->request.iCSeq) {
 		p += snprintf(p, end - p, "CSeq: %d\r\n", phsSocket->request.iCSeq);
 	}
-	p+=snprintf(p, end - p, "Content-Type: %s\r\n", phsSocket->mimeType ? phsSocket->mimeType : contentTypeTable[phsSocket->response.fileType]);
+	p+=snprintf(p, end - p, "Content-Type: %s\r\n", phsSocket->mimeType ? phsSocket->mimeType : Mime_getMimeStringFromType(phsSocket->response.fileType));
 	if (phsSocket->response.contentLength > 0 && !(phsSocket->flags & FLAG_CHUNK)) {
 		p+=snprintf(p, end - p,"Content-Length: %lld\r\n", (long long)phsSocket->response.contentLength);
 	}
@@ -1323,7 +1295,7 @@ done:
 int _mwProcessWriteSocket(HttpParam *hp, HttpSocket* phsSocket)
 {
 	if (phsSocket->dataLength<=0 && !ISFLAGSET(phsSocket,FLAG_DATA_STREAM)) {
-		DBG("[%d] Data sending completed (%d/%d)\n",phsSocket->socket,phsSocket->response.sentBytes,phsSocket->response.contentLength);
+		DBG("[%d] Data sending completed (%d/%lld)\n",phsSocket->socket,phsSocket->response.sentBytes,phsSocket->response.contentLength);
 		return 1;
 	}
 	//SYSLOG(LOG_INFO,"[%d] sending data\n",phsSocket->socket);
@@ -1435,7 +1407,7 @@ int _mwStrHeadMatch(char** pbuf1, const char* buf2) {
 // ... // no finalization required - the state is always consistent after hpf(...).
 
 void hp_init(HttpSocket* s) {
-	s->response.fileType = HTTPFILETYPE_HTML;
+	s->response.fileType = MIMETYPE_HTML;
 	s->response.contentLength = s->dataLength = 0;
 }
 
@@ -1487,7 +1459,6 @@ int _mwListDirectory_internal(HttpSocket* phsSocket, char* dir, int isscript, in
 		struct cc_stat_s st;
 		char *ext, *trail;
 		int isdir = 0;
-		size_t bytes;
 		char ftype[512] = {0};
 		if (!strcmp(cFileName, ".")) continue;
 		if (isroot && !strcmp(cFileName, "..")) continue;
@@ -1499,9 +1470,9 @@ int _mwListDirectory_internal(HttpSocket* phsSocket, char* dir, int isscript, in
 		if ((isdir = (st.st_mode & S_IFDIR))) {
 			snprintf(ftype, 511, "&lt;dir&gt;");
 		} else if ((ext = strrchr(cFileName,'.'))) {
-			int filetype=mwGetContentType(++ext);
-			if (filetype!=HTTPFILETYPE_OCTET)
-				snprintf(ftype, 511, "%s", contentTypeTable[filetype]);
+			int filetype=Mime_getTypeFromExt(++ext);
+			if (filetype!=MIMETYPE_OCTET)
+				snprintf(ftype, 511, "%s", Mime_getMimeStringFromType(filetype));
 			else
 				snprintf(ftype, 511, "%s file",ext);
 		}
@@ -1670,7 +1641,7 @@ int _mwStartSendFile2(HttpParam* hp, HttpSocket* phsSocket, const char* rootPath
         if (szfile) {
           char* data;
           int len = SzExtractContent(hp->szctx, hfp.cFilePath, szfile, &data);
-          printf("7zRequest archive: %s\nhfp.cFilePath: %s\nfile: %s - len %i\n", hp->szctx, hfp.cFilePath, szfile, len);
+          printf("7zRequest archive: %s\nhfp.cFilePath: %s\nfile: %s - len %i\n", (char*)hp->szctx, hfp.cFilePath, szfile, len);
           if (len > 0) {
             p = strrchr(szfile, '.');
             SETFLAG(phsSocket, FLAG_DATA_RAW);
@@ -1678,7 +1649,7 @@ int _mwStartSendFile2(HttpParam* hp, HttpSocket* phsSocket, const char* rootPath
             memcpy(phsSocket->pucData, data, len);
             phsSocket->ptr = phsSocket->pucData;
             phsSocket->response.contentLength = len;
-            phsSocket->response.fileType = p ? mwGetContentType(p + 1) : HTTPFILETYPE_OCTET;
+            phsSocket->response.fileType = Mime_getTypeFromExt(p + 1);
             phsSocket->dataLength = len;
             return _mwStartSendRawData(hp, phsSocket);
           }
@@ -1708,7 +1679,7 @@ int _mwStartSendFile2(HttpParam* hp, HttpSocket* phsSocket, const char* rootPath
             memcpy(phsSocket->pucData, data, len);
             phsSocket->ptr = phsSocket->pucData;
             phsSocket->response.contentLength = len;
-            phsSocket->response.fileType = p ? mwGetContentType(p + 1) : HTTPFILETYPE_OCTET;
+            phsSocket->response.fileType = Mime_getTypeFromExt(p + 1);
             phsSocket->dataLength = len;
             return _mwStartSendRawData(hp, phsSocket);
           }
@@ -1830,10 +1801,10 @@ int _mwStartSendFile2(HttpParam* hp, HttpSocket* phsSocket, const char* rootPath
 			phsSocket->response.statusCode = 206;
 		}
 		if (!phsSocket->response.fileType && hfp.pchExt) {
-			phsSocket->response.fileType=mwGetContentType(hfp.pchExt);
+			phsSocket->response.fileType=Mime_getTypeFromExt(hfp.pchExt);
 		}
 		// mark if substitution needed
-		if (hp->pfnSubst && (phsSocket->response.fileType==HTTPFILETYPE_HTML ||phsSocket->response.fileType==HTTPFILETYPE_JS)) {
+		if (hp->pfnSubst && (phsSocket->response.fileType==MIMETYPE_HTML ||phsSocket->response.fileType==MIMETYPE_JS)) {
 			SETFLAG(phsSocket,FLAG_SUBST);
 		}
 	} else {
@@ -2250,55 +2221,6 @@ void mwDecodeString(char* pchString)
   } while (!bEnd);
 } // end of mwDecodeString
 
-int mwGetContentType(const char *pchExtname)
-{
-	DWORD dwExt = 0;
-	// check type of file requested
-	if (pchExtname[1]=='\0') {
-		return HTTPFILETYPE_OCTET;
-	} else if (pchExtname[2]=='\0') {
-		memcpy(&dwExt, pchExtname, 2);
-		switch (GETDWORD(pchExtname) & 0xffdfdf) {
-		case FILEEXT_JS: return HTTPFILETYPE_JS;
-		case FILEEXT_TS: return HTTPFILETYPE_TS;
-		}
-	} else if (pchExtname[3]=='\0' || pchExtname[3]=='?') {
-		//identify 3-char file extensions
-		memcpy(&dwExt, pchExtname, sizeof(dwExt));
-		switch (dwExt & 0xffdfdfdf) {
-		case FILEEXT_HTM:	return HTTPFILETYPE_HTML;
-		case FILEEXT_XML:	return HTTPFILETYPE_XML;
-		case FILEEXT_XSL:	return HTTPFILETYPE_XML;
-		case FILEEXT_TEXT:	return HTTPFILETYPE_TEXT;
-		case FILEEXT_XUL:	return HTTPFILETYPE_XUL;
-		case FILEEXT_CSS:	return HTTPFILETYPE_CSS;
-		case FILEEXT_PNG:	return HTTPFILETYPE_PNG;
-		case FILEEXT_JPG:	return HTTPFILETYPE_JPEG;
-		case FILEEXT_GIF:	return HTTPFILETYPE_GIF;
-		case FILEEXT_SVG:	return HTTPFILETYPE_SVG;
-		case FILEEXT_SWF:	return HTTPFILETYPE_SWF;
-		case FILEEXT_MPA:	return HTTPFILETYPE_MPA;
-		case FILEEXT_MPG:	return HTTPFILETYPE_MPEG;
-		case FILEEXT_AVI:	return HTTPFILETYPE_AVI;
-		case FILEEXT_MP4:	return HTTPFILETYPE_MP4;
-		case FILEEXT_MOV:	return HTTPFILETYPE_MOV;
-		case FILEEXT_264:	return HTTPFILETYPE_264;
-		case FILEEXT_FLV:	return HTTPFILETYPE_FLV;
-		case FILEEXT_3GP:	return HTTPFILETYPE_3GP;
-		case FILEEXT_ASF:	return HTTPFILETYPE_ASF;
-		case FILEEXT_SDP:	return HTTPFILETYPE_SDP;
-		}
-	} else if (pchExtname[4]=='\0' || pchExtname[4]=='?') {
-		memcpy(&dwExt, pchExtname, sizeof(dwExt));
-		//logic-and with 0xdfdfdfdf gets the uppercase of 4 chars
-		switch (dwExt & 0xdfdfdfdf) {
-		case FILEEXT_HTML:	return HTTPFILETYPE_HTML;
-		case FILEEXT_MPEG:	return HTTPFILETYPE_MPEG;
-		case FILEEXT_M3U8:	return HTTPFILETYPE_M3U8;
-		}
-	}
-	return HTTPFILETYPE_OCTET;
-}
 
 int _mwGrabToken(char *pchToken, char chDelimiter, char *pchBuffer, int iMaxTokenSize)
 {

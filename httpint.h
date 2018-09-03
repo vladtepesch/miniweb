@@ -52,33 +52,6 @@
 #define HTTP_HEADER_END "\r\n\r\n"
 #define HTTP_SUBST_PATTERN (WORD)(('$' << 8) + '$')
 
-// Define file extensions
-#define FILEEXT_HTM DEFDWORD('H','T','M',0)
-#define FILEEXT_XML DEFDWORD('X','M','L',0)
-#define FILEEXT_XSL DEFDWORD('X','S','L',0)
-#define FILEEXT_TEXT DEFDWORD('T','X','T',0)
-#define FILEEXT_XUL DEFDWORD('X','U','L',0)
-#define FILEEXT_GIF DEFDWORD('G','I','F',0)
-#define FILEEXT_JPG DEFDWORD('J','P','G',0)
-#define FILEEXT_PNG DEFDWORD('P','N','G',0)
-#define FILEEXT_SVG DEFDWORD('S','V','G',0)
-#define FILEEXT_CSS DEFDWORD('C','S','S',0)
-#define FILEEXT_JS DEFDWORD('J','S',0,0)
-#define FILEEXT_SWF DEFDWORD('S','W','F',0)
-#define FILEEXT_HTML DEFDWORD('H','T','M','L')
-#define FILEEXT_MPG DEFDWORD('M','P','G',0)
-#define FILEEXT_MPEG DEFDWORD('M','P','E','G')
-#define FILEEXT_MPA DEFDWORD('M','P','3' - 32,0)
-#define FILEEXT_AVI DEFDWORD('A','V','I',0)
-#define FILEEXT_MP4 DEFDWORD('M','P','4' - 32,0)
-#define FILEEXT_MOV DEFDWORD('M','O','V',0)
-#define FILEEXT_FLV DEFDWORD('F','L','V',0)
-#define FILEEXT_3GP DEFDWORD('3' - 32, 'G','P',0)
-#define FILEEXT_ASF DEFDWORD('A','S','F',0)
-#define FILEEXT_264 DEFDWORD('2' - 32, '6' - 32, '4' - 32, 0)
-#define FILEEXT_TS DEFDWORD('T', 'S', 0, 0)
-#define FILEEXT_M3U8 DEFDWORD('M', '3' - 32, 'U', '8' - 32)
-#define FILEEXT_SDP DEFDWORD('S', 'D', 'P', 0)
 
 // Settings for http server
 #define HTTP_EXPIRATION_TIME (120/*secs*/)

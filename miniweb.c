@@ -12,6 +12,7 @@
 #include "httppil.h"
 #include "httpapi.h"
 #include "revision.h"
+#include "mime.h"
 #ifdef MEDIA_SERVER
 #include "mediaserver.h"
 #endif
@@ -242,7 +243,7 @@ static int print_interfaces(const char *prefix, int port)
 {
 	MIB_IPADDRTABLE *iptable = NULL;
 	DWORD tablesize = 0;
-	int i = 0;
+	size_t i = 0;
 
 	if (ERROR_INSUFFICIENT_BUFFER == GetIpAddrTable(NULL, &tablesize, 1) &&
 	    (iptable = (MIB_IPADDRTABLE*)malloc(tablesize)) &&
@@ -295,7 +296,8 @@ static int print_interfaces(const char *prefix, int port)
 
 int cc_main(int argc,char* argv[])
 {
-	fprintf(stderr,"%s https://github.com/avih/miniweb (built on %s)\n"
+  Mime_init();
+	fprintf(stderr,"%s https://github.com/vladtepesch/miniweb (built on %s)\n"
 	               "Originally: (C)2005-2013 Written by Stanley Huang <stanleyhuangyc@gmail.com>\n\n",
 	               APP_NAME, __DATE__);
 

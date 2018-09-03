@@ -278,7 +278,7 @@ int ShellExec(SHELL_PARAM* param, const char* cmdline)
 	// modify path variable
 	if (param->pchPath) {
 		GetEnvironmentVariable("PATH",prevPath,sizeof(prevPath));
-		snprintf(newPath, sizeof(newPath), "%s;s", param->pchPath, prevPath);
+		snprintf(newPath, sizeof(newPath), "%s;%s", param->pchPath, prevPath);
 		SetEnvironmentVariable("PATH",newPath);
 	}
 

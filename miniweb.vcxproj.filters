@@ -12,6 +12,9 @@
     <ClCompile Include="minz\miniz.c">
       <Filter>minz</Filter>
     </ClCompile>
+    <ClCompile Include="mime.cpp">
+      <Filter>NewFilter1</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="httpapi.h" />
@@ -21,16 +24,30 @@
     <ClInclude Include="httpxml.h" />
     <ClInclude Include="processpil.h" />
     <ClInclude Include="revision.h" />
+    <ClInclude Include="mime.h">
+      <Filter>NewFilter1</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="webroot\demo-dyn.htm" />
     <None Include="webroot\formtest.htm" />
     <None Include="webroot\index.htm" />
     <None Include="Makefile" />
+    <None Include="mime.types">
+      <Filter>NewFilter1</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="minz">
       <UniqueIdentifier>{186742b7-e95b-480b-9194-4d6322c3175c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="NewFilter1">
+      <UniqueIdentifier>{40e974e4-d39a-4c08-b731-257433632223}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="mime.types.c.txt">
+      <Filter>NewFilter1</Filter>
+    </Text>
   </ItemGroup>
 </Project>
