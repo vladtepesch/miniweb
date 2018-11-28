@@ -123,6 +123,7 @@
     <ClInclude Include="httpvod.h" />
     <ClInclude Include="httpxml.h" />
     <ClInclude Include="mime.h" />
+    <ClInclude Include="minz\miniz.h" />
     <ClInclude Include="processpil.h" />
     <ClInclude Include="revision.h" />
   </ItemGroup>
