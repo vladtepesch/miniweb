@@ -1,7 +1,14 @@
-# additional changes 
- - added zip - support
- - added dependencies for 7z-support (allthough it does not properly with large 7zfiles)
- - made compilable with Visual Studio 2015
+# miniweb-vladtepesch
+Small, cross-platform HTTP server.  
+It can serve content from an archive file (zip/7z).
+
+**BEWARE: should be considered unsecure and be only used in local environment and under no circumstances made accessable from internet or other untrusted networks (please note the possibility to bind the server to specific (e.g. localhost) interfaces with** `-i` **)**
+
+- This is a fork of https://github.com/avih/miniweb that was is not maintained anymore, with the following enhancements:
+  - added zip - support
+  - added dependencies for 7z-support (allthough it does not properly work with large 7zfiles)
+  - made compilable with Visual Studio 2015
+  - improved mime type support
 
 # miniweb-avih
 Small, cross-platform HTTP server
