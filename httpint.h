@@ -64,7 +64,6 @@
 #define HTTPMAXRECVBUFFER HTTP_BUFFER_SIZE
 #define HTTPUPLOAD_CHUNKSIZE (HTTPMAXRECVBUFFER / 2/*bytes*/)
 #define MAX_REQUEST_PATH_LEN (512/*bytes*/)
-#define MAX_REQUEST_SIZE (2*1024 /*bytes*/)
 #define MAX_POST_PAYLOAD_SIZE (256*1024 /*bytes*/)
 
 #ifndef WINCE
@@ -101,7 +100,7 @@ void _mwRedirect(HttpSocket* phsSocket, char* pchFilename);
 int _mwSendRawDataChunk(HttpParam *hp, HttpSocket* phsSocket);
 int _mwStartSendRawData(HttpParam *hp, HttpSocket* phsSocket);
 int _mwGetToken(char* pchBuffer,int iTokenNumber,char** ppchToken); 
-char _mwDecodeCharacter(char* pchEncodedChar);
+int _mwDecodeTwoHexDigits(const char* pchEncodedChar);
 int _mwLoadFileChunk(HttpParam *hp, HttpSocket* phsSocket);
 char* _mwFindMultipartBoundary(char *poHaystack, int iHaystackSize, char *poNeedle);
 void _mwNotifyPostVars(HttpParam *hp, HttpSocket* phsSocket, PostParam *pp);

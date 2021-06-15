@@ -252,55 +252,90 @@ int mwServerShutdown(HttpParam* hp, mwShutdownCallback cb, unsigned int timeout_
 	return (hp->bWebserverRunning ? -1 : 0);
 }
 
+// stop on '?' or '\0', prepend '/', unescape '+' and %HH, reject on invalid
+// chars or empty/meta dirs. if all is valid, also convert '/' to SLASH.
+static char *validated_request_path(const char *s)
+{
+	unsigned char *rv = s ? malloc(strlen(s) + 3) : NULL,  // '/' s '/' '\0'
+	              *o = rv;
+	if (!rv)
+		return NULL;
+
+	// we could implement in just one pass on s, but the logic becomes delicate.
+	// first pass: prepend '/', unescape, and validate chars and empty dirs
+	*o++ = '/';  // the path we get starts from the second char, assume '/'
+	for(; *s && *s != '?'; s++) {
+		int c = (unsigned char)*s;
+
+		if (c == '+') {
+			c = ' ';
+		} else if (c == '%') {
+			c = _mwDecodeTwoHexDigits(s + 1);
+			if (c <= 0)  // invalid %HH or too early '\0', or %00
+				goto error_out;
+			s += 2;  // the loop adds another one
+		}
+
+		// valid but reject: non printable, [?*\] and // dir (UTF8 unaffacted)
+		if (c < ' ' || strchr("?*\\", c) || ( c == '/' && c == *(o - 1)))
+			goto error_out;
+
+		*o++ = c;
+	}
+	*o++ = '/';  // temporarily for the meta-dir tests
+	*o = '\0';
+
+	if (strstr(rv, "/./") || strstr(rv, "/../"))
+		goto error_out;  // reject meta dirs
+	*(o - 1) = 0;  // remove the temporary '/'
+
+	if (SLASH != '/') {
+		for(o = rv; o = strchr(o, '/'); )
+			*o++ = SLASH;
+	}
+
+	return rv;
+
+error_out:
+	free(rv);
+	return NULL;
+}
+
 int mwGetLocalFileName(HttpFilePath* hfp)
 {
-	char ch;
-	char *p = (char*)hfp->cFilePath;
-	char *s = (char*)hfp->pchHttpPath;
-	char *upLevel = NULL;
+	char *p = hfp->cFilePath;
+	char *final0 = p + sizeof(hfp->cFilePath) - 1;
+	char *req;
 
 	hfp->pchExt=NULL;
-	hfp->fTailSlash=0;
-	if (*s == '~') {
-		s++;
-	} else if (hfp->pchRootPath) {
-		p+=_mwStrCopy(hfp->cFilePath,hfp->pchRootPath);
-		if (*(p-1)!=SLASH) {
-			*p=SLASH;
-			*(++p)=0;
-		}
+	hfp->isDirRequest=0;
+
+	if (!hfp->pchRootPath || !*hfp->pchRootPath || strlen(hfp->pchRootPath) > final0 - p) {
+		DBG("root path missing, empty, or too long\n");
+		return -1;
 	}
-	while ((ch=*s) && ch!='?' && (int)(p-hfp->cFilePath)<sizeof(hfp->cFilePath)-1) {
-		if (ch=='%') {
-			*(p++) = _mwDecodeCharacter(++s);
-			s += 2;
-		} else if (ch=='/') {
-			*p=SLASH;
-			upLevel=(++p);
-			while (*(++s)=='/');
-			continue;
-		} else if (ch=='+') {
-			*(p++)=' ';
-			s++;
-		} else if (ch=='.') {
-			if (upLevel && !memcmp(s+1, "./", 2)) {
-				s+=2;
-				p=upLevel;
-			} else {
-				*(p++)='.';
-				hfp->pchExt=p;
-				while (*(++s)=='.');	//avoid '..' appearing in filename for security issue
-			}
-		} else {
-			*(p++)=*(s++);
-		}
+	p+=_mwStrCopy(hfp->cFilePath, hfp->pchRootPath);
+	if (*(p-1) == SLASH)
+		p--; // appended validated request always starts with SLASH
+
+	req = validated_request_path(hfp->pchHttpPath);
+	if (!req || strlen(req) > final0 - p) {
+		if (req) free(req);
+		return -1;
 	}
-	if (*(p-1)==SLASH) {
-		p--;
-		hfp->fTailSlash=1;
+	p += _mwStrCopy(p, req);
+	free(req);
+
+	if (*(p-1) == SLASH) {
+		hfp->isDirRequest = 1;
+		if (hfp->cFilePath[1])  // dir name of "/" remains "/"
+			*--p = '\0';  // /foo/bar/ -> /foo/bar
 	}
-	*p=0;
-	return (int)(p - hfp->cFilePath);
+	if ((hfp->pchExt = strrchr(hfp->cFilePath, '.')))
+		hfp->pchExt++;
+
+	DBG("request -> local path (%s): '%s'\n", (hfp->isDirRequest ? "dir" : "file"), hfp->cFilePath);
+	return (int)((char*)p - hfp->cFilePath);
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -1460,10 +1495,11 @@ int _mwListDirectory_internal(HttpSocket* phsSocket, char* dir, int isscript, in
 		char *ext, *trail;
 		int isdir = 0;
 		char ftype[512] = {0};
+		int has_slash = dir[0] && strstr("/\\", dir + strlen(dir) - 1);
 		if (!strcmp(cFileName, ".")) continue;
 		if (isroot && !strcmp(cFileName, "..")) continue;
 		DBG("Checking %s ...\n",cFileName);
-		snprintf(cFilePath, sizeof(cFilePath), "%s/%s",dir,cFileName);
+		snprintf(cFilePath, sizeof(cFilePath), "%s%s%s",dir,(has_slash ? "" : "/"), cFileName);
 		if (cc_stat(cFilePath,&st)) continue;
 
 		// setup ftype to hold the file type string
@@ -1626,7 +1662,10 @@ int _mwStartSendFile2(HttpParam* hp, HttpSocket* phsSocket, const char* rootPath
 	// check type of file requested
 	if (!ISFLAGSET(phsSocket, FLAG_DATA_FD)) {
 		hfp.pchHttpPath=filePath; //phsSocket->request.pucPath;
-		mwGetLocalFileName(&hfp);
+		if (mwGetLocalFileName(&hfp) <= 0) {
+			SYSLOG(LOG_INFO,"[%d] Request path rejected: too long or failed sanity tests\n", phsSocket->socket);
+			return -1;
+		}
 #ifndef WINCE
 		if (cc_stat(hfp.cFilePath,&st) < 0) {
 #ifdef _7Z
@@ -1760,7 +1799,7 @@ int _mwStartSendFile2(HttpParam* hp, HttpSocket* phsSocket, const char* rootPath
 
 		if (phsSocket->fd <= 0 && (hp->flags & FLAG_DIR_LISTING)) {
 			SETFLAG(phsSocket,FLAG_DATA_RAW);
-			if (!hfp.fTailSlash) {
+			if (!hfp.isDirRequest) {
 				p=phsSocket->request.pucPath;
 				while(*p) p++;				//seek to the end of the string
 				strcpy(p, "/");				//add a tailing slash
@@ -2161,47 +2200,45 @@ char* _mwStrStrNoCase(char* pchHaystack, char* pchNeedle)
 // _mwDecodeCharacter
 // Convert and individual character
 ////////////////////////////////////////////////////////////////////////////
-char _mwDecodeCharacter(char* s)
+
+// returns 0-15 if successful, or -1 if not a hex digit
+static int fromHexChar (char c)
 {
-  	register unsigned char v;
-	if (!*s) return 0;
-	if (*s>='a' && *s<='f')
-		v = *s-('a'-'A'+7);
-	else if (*s>='A' && *s<='F')
-		v = *s-7;
-	else
-		v = *s;
-	if (*(++s)==0) return v;
-	v <<= 4;
-	if (*s>='a' && *s<='f')
-		v |= (*s-('a'-'A'+7)) & 0xf;
-	else if (*s>='A' && *s<='F')
-		v |= (*s-7) & 0xf;
-	else
-		v |= *s & 0xf;
-	return v;
-} // end of _mwDecodeCharacter
+    static const char *digits = "0123456789abcdef";
+    const char *h = c ? strchr(digits, tolower(c)) : NULL;
+    return h ? h - digits : -1;
+}
+
+// returns 0-255 on success, else -1 (if s ends prematurely or not hex digits)
+int _mwDecodeTwoHexDigits(const char* s)
+{
+    int h = fromHexChar(s[0]),
+        l = s[0] ? fromHexChar(s[1]) : -1;
+    return h < 0 || l < 0 ? -1 : 16 * h + l;
+}
 
 ////////////////////////////////////////////////////////////////////////////
 // _mwDecodeString
 // This function converts URLd characters back to ascii. For example
-// %3A is '.'
+// %2E is '.'
 ////////////////////////////////////////////////////////////////////////////
 void mwDecodeString(char* pchString)
 {
-  int bEnd=FALSE;
+  int bEnd=FALSE, tmp;
   char* pchInput=pchString;
-  char* pchOutput=pchString;
+  unsigned char* pchOutput=pchString;
 
   do {
     switch (*pchInput) {
     case '%':
-      if (*(pchInput+1)=='\0' || *(pchInput+2)=='\0') {
-        // something not right - terminate the string and abort
+      tmp = _mwDecodeTwoHexDigits(pchInput+1);
+      if (tmp <= 0) {
+        // invalid input or 0 output - terminate the string and abort
+        fprintf(stderr, "Error: invalid %%HH sequence\n");
         *pchOutput='\0';
         bEnd=TRUE;
       } else {
-        *pchOutput=_mwDecodeCharacter(pchInput+1);
+        *pchOutput = tmp;
         pchInput+=3;
       }
       break;
